@@ -23,6 +23,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import thinclab.ddinterface.DDTree;
 import thinclab.decisionprocesses.DecisionProcess;
 import thinclab.decisionprocesses.IPOMDP;
 import thinclab.exceptions.ZeroProbabilityObsException;
@@ -47,6 +48,11 @@ public class StructuredTree implements Serializable {
 	public HashMap<Integer, HashMap<List<String>, Integer>> edgeMap =
 			new HashMap<Integer, HashMap<List<String>, Integer>>();
 	
+	/* Store info about frames */
+	public HashMap<DDTree, Integer> ddTreeToIdMap = new HashMap<DDTree, Integer>();
+	public HashMap<Integer, Integer> nodeIdToFrameIdMap = new HashMap<Integer, Integer>();
+	
+	/* current node counter */
 	public int currentPolicyNodeCounter = 0;
 	
 	public List<List<String>> observations;
@@ -178,36 +184,19 @@ public class StructuredTree implements Serializable {
 
 			nextBelief = 
 					parentNode.getFramework().beliefUpdate( 
-							parentNode., 
-							action, 
-							obs.toArray(new String[obs.size()])); 
+							parentNode.getBelief(), 
+							action,
+							obs.toArray(new String[obs.size()]));
 			
-			String nextBeliefString = solver.f.getBeliefString(nextBelief);
+			/* make policy node */
+			PolicyNode newNode = new PolicyNode(parentNode.getSolver(), nextBelief);
 			
-			/* add to belief set if nextBelief is unique */
-			if (!currentLevelBeliefSet.containsKey(nextBeliefString)) {
-				currentLevelBeliefSet.put(nextBeliefString, this.currentPolicyNodeCounter);
-				this.currentPolicyNodeCounter += 1;
-				
-				int nextNodeId = currentLevelBeliefSet.get(nextBeliefString);
-				PolicyNode nextNode = new PolicyNode();
-				
-				nextNode.id = nextNodeId;
-				nextNode.belief = nextBelief;
-				nextNode.actName = solver.getActionForBelief(nextBelief);
-				nextNode.H = level;
-				nextNode.sBelief = nextBeliefString;
-				
-				/* add next unique node to the nodes map */
-				this.idToNodeMap.put(nextNodeId, nextNode);
-			}
+			int newNodeId = this.populateInternalMaps(newNode);
 			
-			int nextNodeId = currentLevelBeliefSet.get(nextBeliefString);
+			if (!this.edgeMap.containsKey(parentNode.id))
+				this.edgeMap.put(parentNode.id, new HashMap<List<String>, Integer>());
 			
-			if (!this.edgeMap.containsKey(parentNodeId))
-				this.edgeMap.put(parentNodeId, new HashMap<List<String>, Integer>());
-			
-			this.edgeMap.get(parentNodeId).put(obs, nextNodeId);
+			this.edgeMap.get(parentNode.id).put(obs, newNodeId);
 			
 		}
 		
@@ -219,6 +208,33 @@ public class StructuredTree implements Serializable {
 			LOGGER.error("While running belief update " + e.getMessage());
 			e.printStackTrace();
 			System.exit(-1);
+		}
+	}
+	
+	// ----------------------------------------------------------------------------------------
+	
+	public int populateInternalMaps(PolicyNode node) {
+		
+		/* check if this belief already exists in either frame */
+		if (this.ddTreeToIdMap.containsKey(node.getBeliefAsDDTree()))
+			return this.ddTreeToIdMap.get(node.getBeliefAsDDTree());
+		
+		else {
+			
+			int id = this.currentPolicyNodeCounter;
+			this.currentPolicyNodeCounter += 1;
+			node.id = id;
+			
+			/* make entry in idtoNodeMap */
+			this.idToNodeMap.put(id, node);
+			
+			/* make entry in ddTreeToIdMap */
+			this.ddTreeToIdMap.put(node.getBeliefAsDDTree(), id);
+			
+			/* make entry in nodeIdToFrameIdMap */
+			this.nodeIdToFrameIdMap.put(id, node.getFramework().frameID);
+			
+			return id;
 		}
 	}
 	
