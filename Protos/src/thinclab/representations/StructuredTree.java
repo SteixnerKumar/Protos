@@ -152,24 +152,21 @@ public class StructuredTree implements Serializable {
 	}
 	
 	public void makeNextPolicyNode(
-			int parentNodeId, 
-			DD parentNodeBelief,
-			BaseSolver solver,
+			PolicyNode parentNode,
 			String action,
-			List<String> obs,
-			HashMap<String, Integer> currentLevelBeliefSet,
-			int level) {
+			List<String> obs) {
 		
 		/* 
-		 * Make the next node after taking action at parentNodeBelief and observing the
-		 * specified observation
+		 * Generic implementation of makeNextPolicyNode. Independent of parentNodes frame.
 		 * 
-		 * 
-		 * WARNING: This method uses belief strings to maintain unique beliefs. After the recent
-		 * commits, belief strings are built from JSON objects and hashmaps which do not guarantee
-		 * the ordering of keys. So same beliefs can be stored as unique beliefs just because of key
-		 * ordering is different. Do not use this function will be removed soon
+		 * Note this function switches contexts for every belief computation. Not a good idea
+		 * to use it in an online setting since it will flush out all caches every time it is 
+		 * called.
 		 */
+		
+		/* Set context to the frame of the parent node */
+		parentNode.getFramework().setGlobals();
+		
 		try {
 			
 			DD nextBelief = null;
@@ -180,8 +177,8 @@ public class StructuredTree implements Serializable {
 			 */
 
 			nextBelief = 
-					solver.f.beliefUpdate( 
-							parentNodeBelief, 
+					parentNode.getFramework().beliefUpdate( 
+							parentNode., 
 							action, 
 							obs.toArray(new String[obs.size()])); 
 			

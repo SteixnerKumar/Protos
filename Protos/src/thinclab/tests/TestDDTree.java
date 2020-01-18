@@ -113,7 +113,9 @@ class TestDDTree {
 		
 		try {
 			
-			pomdp = new POMDP("/home/adityas/git/repository/Protos/domains/attacker_l0.txt");
+			pomdp = 
+					new POMDP(
+							"/home/adityas/UGA/THINCLab/DomainFiles/attacker_l0.txt");
 			
 			OfflineSymbolicPerseus solver = 
 					OfflineSymbolicPerseus.createSolverWithSSGAExpansion(

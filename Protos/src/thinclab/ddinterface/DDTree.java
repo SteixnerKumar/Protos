@@ -14,6 +14,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+
 import thinclab.decisionprocesses.DecisionProcess;
 import thinclab.legacy.DD;
 import thinclab.legacy.DDnode;
@@ -134,13 +136,16 @@ public class DDTree implements Serializable {
     public int hashCode() {
 		
 		try {
-			int hashCode = 0;
+			
+			HashCodeBuilder builder = new HashCodeBuilder();
 			
 			for (String child : this.children.keySet()) {
-			    hashCode += this.children.get(child).hashCode();
+			    builder.append(this.children.get(child).hashCode());
 			}
 			
-			return hashCode + DecisionProcess.getVarIndex(this.varName);
+			builder.append(this.varName);
+			
+			return builder.toHashCode();
 		}
 		
 		catch (Exception e) {

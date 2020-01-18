@@ -1,10 +1,11 @@
 package thinclab.representations.policyrepresentations;
 
 import java.io.Serializable;
-import java.util.*;
 
-import thinclab.decisionprocesses.POMDP;
+import thinclab.ddinterface.DDTree;
+import thinclab.decisionprocesses.DecisionProcess;
 import thinclab.legacy.DD;
+import thinclab.solvers.BaseSolver;
 
 public class PolicyNode implements Serializable {
 	
@@ -16,14 +17,13 @@ public class PolicyNode implements Serializable {
 	public String actName = "";
 	public String sBelief = "";
 	public DD belief;
+	public DDTree beliefDDTree;
 
 	public int id = -1;
 	public int H = -1;
-	
-	public HashMap<String, HashMap<String, Float>> factoredBelief;
 
 	public boolean startNode = false;
-	public POMDP p;
+	public BaseSolver S;
 	
 	// ------------------------------------------------------------------------------------
 	/*
@@ -32,6 +32,18 @@ public class PolicyNode implements Serializable {
 	
 	public PolicyNode() {
 		
+	}
+	
+	public PolicyNode(BaseSolver S, DD belief) {
+		/*
+		 * For using policynodes with new StructuredTree API 
+		 */
+		
+		this.S = S;
+		this.belief = belief;
+		this.sBelief = this.S.f.getBeliefString(belief);
+		this.beliefDDTree = this.belief.toDDTree();
+		this.actName = this.S.getActionForBelief(belief);
 	}
 	
 	public PolicyNode(int id, int timeStep, String sBelief, String action) {
@@ -62,14 +74,29 @@ public class PolicyNode implements Serializable {
 		this.startNode = true;
 	}
 	
+	public BaseSolver getSolver() {
+		return this.S;
+	}
+	
+	public DecisionProcess getFramework() {
+		return this.getSolver().f;
+	}
+	
+	public DD getBelief() {
+		return belief;
+	}
+	
+	public DDTree getBeliefAsDDTree() {
+		return this.beliefDDTree;
+	}
+	
 	// -------------------------------------------------------------------------------------
 
 	@Override
 	public String toString() {
 		return "PolicyNode \t [ID = " + this.id
 				+ " \t level=" + this.H 
-				+ " \t action=" + this.actName 
-				+ " \t belief=" + this.factoredBelief
+				+ " \t action=" + this.actName
 				+ " \t belief=" + this.sBelief + "]\r\n";
 	}
 
