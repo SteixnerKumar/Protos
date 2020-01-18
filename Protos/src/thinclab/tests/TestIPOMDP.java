@@ -53,16 +53,55 @@ class TestIPOMDP {
 	}
 	
 	@Test
-	void testMJCompression() throws Exception {
+	void testMJApproximation() throws Exception {
+		
+//		IPOMDPParser parser = 
+//				new IPOMDPParser(
+//						"/home/adityas/git/repository/Protos/domains/tiger.L1multiple_new_parser.txt");
 		
 		IPOMDPParser parser = 
 				new IPOMDPParser(
-						"/home/adityas/git/repository/Protos/domains/tiger.L1multiple_new_parser.txt");
+						"/home/adityas/UGA/THINCLab/DomainFiles/final_domains/cybersec.5S.2O.L1.2F.domain");
+		
 		parser.parseDomain();
 		
 		LOGGER.info("Calling empty constructor");
-		IPOMDP ipomdp = new IPOMDP(parser, 3, 10);
+		IPOMDP ipomdp = new IPOMDP(parser, 3, 10, 0.1);
 		
+		ipomdp.step(
+				ipomdp.getCurrentBelief(), 
+				ipomdp.getActions().get(0), 
+				ipomdp.getAllPossibleObservations().get(0).stream().toArray(String[]::new));
+		
+		ipomdp.step(
+				ipomdp.getCurrentBelief(), 
+				ipomdp.getActions().get(0), 
+				ipomdp.getAllPossibleObservations().get(0).stream().toArray(String[]::new));
+		
+		ipomdp.step(
+				ipomdp.getCurrentBelief(), 
+				ipomdp.getActions().get(0), 
+				ipomdp.getAllPossibleObservations().get(0).stream().toArray(String[]::new));
+		
+		ipomdp.step(
+				ipomdp.getCurrentBelief(), 
+				ipomdp.getActions().get(0), 
+				ipomdp.getAllPossibleObservations().get(0).stream().toArray(String[]::new));
+		
+	}
+	
+	@Test
+	void testMJSpaceCompression() throws Exception {
+		
+		LOGGER.info("Testing MJ space compression");
+		
+		IPOMDPParser parser = 
+				new IPOMDPParser(
+						"/home/adityas/UGA/THINCLab/DomainFiles/"
+						+ "final_domains/cybersec.5S.2O.L1.1F.exfil.domain");
+		parser.parseDomain();
+		
+		IPOMDP ipomdp = new IPOMDP(parser, 3, 10, 0.001);
 	}
 
 	@Test

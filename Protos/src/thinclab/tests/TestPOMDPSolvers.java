@@ -9,6 +9,10 @@ package thinclab.tests;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.HashSet;
+import java.util.List;
+
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.log4j.Logger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +23,7 @@ import thinclab.belief.SSGABeliefExpansion;
 import thinclab.decisionprocesses.POMDP;
 import thinclab.exceptions.ZeroProbabilityObsException;
 import thinclab.legacy.DD;
+import thinclab.legacy.OP;
 import thinclab.simulations.StochasticSimulation;
 import thinclab.solvers.OfflinePBVISolver;
 import thinclab.solvers.OfflineSymbolicPerseus;
@@ -220,5 +225,40 @@ class TestPOMDPSolvers {
 		ss.runSimulation();
 		
 		LOGGER.debug(ss.getDotString());
+	}
+	
+	@Test
+	void testStuff() {
+		
+		LOGGER.info("Testing stuff");
+		
+		POMDP p1 = new POMDP(this.tigerDom);
+		
+		String action = p1.getActions().get(0);
+		int act = p1.getActions().indexOf(action);
+		
+		LOGGER.debug("Trying for action: " + action);
+		
+		HashSet<DD> F = new HashSet<DD>();
+		F.add(p1.getRewardFunctionForAction(action));
+		
+		for (int i = 0; i < 10; i++) {
+			
+			for (DD f: F) {
+				
+				for (List<String> obs : p1.getAllPossibleObservations()) {
+					
+					DD[] dds = new DD[0];
+					
+					dds = ArrayUtils.addAll(dds, p1.actions[act].transFn);
+					dds = ArrayUtils.addAll(dds, p1.actions[act].obsFn);
+					dds = ArrayUtils.add(dds, f);
+					
+					DD Tf = OP.multN(dds);
+					
+					LOGGER.debug("TF is " + Tf.toDDTree());
+				}
+			}
+		}
 	}
 }

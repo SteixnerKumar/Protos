@@ -104,10 +104,12 @@ class TestRepresentations {
 		
 		LOGGER.info("Testing effects of merging MJs");
 		
-		IPOMDPParser parser = new IPOMDPParser(this.l1DomainFile);
+		IPOMDPParser parser = 
+				new IPOMDPParser("/home/adityas/UGA/THINCLab/DomainFiles/"
+						+ "final_domains/cybersec.5S.2O.L1.1F.exfil.domain");
 		parser.parseDomain();
 		
-		IPOMDP ipomdp = new IPOMDP(parser, 5, 10);
+		IPOMDP ipomdp = new IPOMDP(parser, 3, 10);
 		
 		LOGGER.info("Without merging");
 		for (MJ mj: ipomdp.multiFrameMJ.MJs.values()) {
@@ -115,10 +117,11 @@ class TestRepresentations {
 			System.out.println(mj.getDotString());
 		}
 		
-		parser = new IPOMDPParser(this.l1DomainFile);
+		parser = new IPOMDPParser("/home/adityas/UGA/THINCLab/DomainFiles/"
+				+ "final_domains/cybersec.5S.2O.L1.1F.exfil.domain");
 		parser.parseDomain();
 		
-		IPOMDP newIpomdp = new IPOMDP(parser, 5, 10, 0.01);
+		IPOMDP newIpomdp = new IPOMDP(parser, 3, 10, 0.1);
 		
 		LOGGER.info("With merging");
 		for (MJ mj: newIpomdp.multiFrameMJ.MJs.values()) {

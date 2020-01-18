@@ -27,6 +27,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
+import thinclab.belief.FullBeliefExpansion;
 import thinclab.belief.IBeliefOps;
 import thinclab.belief.SSGABeliefExpansion;
 import thinclab.ddinterface.DDTree;
@@ -1413,6 +1414,53 @@ public class IPOMDP extends POMDP {
 		}
 			
 		return belief;
+	}
+	
+	public void compressMjSpace() {
+		/*
+		 * Removes all low probability MJs within the current look ahead
+		 * and reinits the IPOMDP
+		 */
+		
+		FullBeliefExpansion fb = new FullBeliefExpansion(this);
+		
+		List<DD> previousNodes = fb.getBeliefPoints();
+		
+		for (int i = 0; i < mjLookAhead; i++) {
+			
+			HashMap<String, Float> averageBelief = new HashMap<String, Float>();
+			
+			fb.expandSingleStep();
+			
+			List<DD> beliefs = fb.getBeliefPoints();
+			beliefs.removeAll(previousNodes);
+			
+			for (DD belief : beliefs) {
+				LOGGER.debug(this.toMap(belief).get("M_j"));
+				HashMap<String, Float> mjBel = this.toMap(belief).get("M_j");
+				
+				for (String mj : mjBel.keySet()) {
+					
+					if (averageBelief.containsKey(mj))
+						averageBelief.put(mj, averageBelief.get(mj) + mjBel.get(mj));
+					
+					else averageBelief.put(mj, mjBel.get(mj));
+				}
+			}
+			
+			for (String mj : averageBelief.keySet()) {
+				LOGGER.debug("Avg. belief in " + mj + " is " + 
+						(averageBelief.get(mj) / (float) beliefs.size()));
+			}
+			
+			previousNodes.clear();
+			previousNodes.addAll(beliefs);
+			
+			fb.exploredBeliefs.clear();
+			fb.leaves.clear();
+			
+			fb.leaves.addAll(previousNodes);
+		}
 	}
 	
 	private void updateMjInIS() {
