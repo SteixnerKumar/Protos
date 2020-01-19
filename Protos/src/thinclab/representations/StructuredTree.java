@@ -30,6 +30,7 @@ import thinclab.exceptions.ZeroProbabilityObsException;
 import thinclab.legacy.DD;
 import thinclab.legacy.DDleaf;
 import thinclab.legacy.OP;
+import thinclab.representations.modelrepresentations.BeliefNode;
 import thinclab.representations.policyrepresentations.PolicyNode;
 import thinclab.solvers.BaseSolver;
 
@@ -48,9 +49,7 @@ public class StructuredTree implements Serializable {
 	public HashMap<Integer, HashMap<List<String>, Integer>> edgeMap =
 			new HashMap<Integer, HashMap<List<String>, Integer>>();
 	
-	/* Store info about frames */
 	public HashMap<DDTree, Integer> ddTreeToIdMap = new HashMap<DDTree, Integer>();
-	public HashMap<Integer, Integer> nodeIdToFrameIdMap = new HashMap<Integer, Integer>();
 	
 	/* current node counter */
 	public int currentPolicyNodeCounter = 0;
@@ -157,10 +156,11 @@ public class StructuredTree implements Serializable {
 		}
 	}
 	
-	public void makeNextPolicyNode(
-			PolicyNode parentNode,
+	public void expandFromPreviousNode(
+			BeliefNode parentNode,
 			String action,
-			List<String> obs) {
+			List<String> obs,
+			List<Integer> nextLeafIds) {
 		
 		/* 
 		 * Generic implementation of makeNextPolicyNode. Independent of parentNodes frame.
@@ -170,54 +170,79 @@ public class StructuredTree implements Serializable {
 		 * called.
 		 */
 		
-		/* Set context to the frame of the parent node */
-		parentNode.getFramework().setGlobals();
+		for (Entry<String, BaseSolver> frame: parentNode.getFrames().entrySet()) {
+			
+			/* Frame */
+			String frameName = frame.getKey();
+			
+			/* Frames solver ref */
+			BaseSolver frameSolverRef = frame.getValue();
 		
-		try {
+			/* Set context to the frame of the parent node */
+			frameSolverRef.f.setGlobals();
 			
-			DD nextBelief = null;
+			try {
+	
+				DD nextBelief = 
+						frameSolverRef.f.beliefUpdate( 
+								parentNode.getBelief(), 
+								action,
+								obs.toArray(new String[obs.size()]));
+				
+				/* make policy node */
+				BeliefNode newNode = new BeliefNode(frameSolverRef, nextBelief);
+				
+				int newNodeId = this.populateInternalMaps(newNode, frameSolverRef);
+				
+				if (!this.edgeMap.containsKey(parentNode.id))
+					this.edgeMap.put(parentNode.id, new HashMap<List<String>, Integer>());
+				
+				/* make edge with frame,action,obs */
+				List<String> edge = new ArrayList<String>();
+				edge.add(frameName);
+				edge.add(action);
+				edge.addAll(obs);
+				
+				this.edgeMap.get(parentNode.id).put(edge, newNodeId);
+				
+				/* record newNodeId for expansion during the next level */
+				if (!nextLeafIds.contains(newNodeId))
+					nextLeafIds.add(newNodeId);
+			}
 			
-			/*
-			 * If the process is an IPOMDP, do an IPOMDP belief update
-			 * else POMDP belief update
-			 */
-
-			nextBelief = 
-					parentNode.getFramework().beliefUpdate( 
-							parentNode.getBelief(), 
-							action,
-							obs.toArray(new String[obs.size()]));
+			catch (ZeroProbabilityObsException o) {
+				
+			}
 			
-			/* make policy node */
-			PolicyNode newNode = new PolicyNode(parentNode.getSolver(), nextBelief);
-			
-			int newNodeId = this.populateInternalMaps(newNode);
-			
-			if (!this.edgeMap.containsKey(parentNode.id))
-				this.edgeMap.put(parentNode.id, new HashMap<List<String>, Integer>());
-			
-			this.edgeMap.get(parentNode.id).put(obs, newNodeId);
-			
-		}
-		
-		catch (ZeroProbabilityObsException o) {
-			
-		}
-		
-		catch (Exception e) {
-			LOGGER.error("While running belief update " + e.getMessage());
-			e.printStackTrace();
-			System.exit(-1);
+			catch (Exception e) {
+				LOGGER.error("While running belief update " + e.getMessage());
+				e.printStackTrace();
+				System.exit(-1);
+			}	
 		}
 	}
 	
 	// ----------------------------------------------------------------------------------------
 	
-	public int populateInternalMaps(PolicyNode node) {
+	public int populateInternalMaps(BeliefNode node, BaseSolver frameRef) {
 		
 		/* check if this belief already exists in either frame */
-		if (this.ddTreeToIdMap.containsKey(node.getBeliefAsDDTree()))
-			return this.ddTreeToIdMap.get(node.getBeliefAsDDTree());
+		if (this.ddTreeToIdMap.containsKey(node.getBeliefAsDDTree())) {
+			
+			int dupId = this.ddTreeToIdMap.get(node.getBeliefAsDDTree());
+			BeliefNode dupNode = (BeliefNode) this.idToNodeMap.get(dupId);
+			
+			/*
+			 * If this is a repeated node with only difference being the frame,
+			 * Then add new frame reference to the old node instead of creating a new
+			 * copy
+			 */
+			if (!dupNode.isInFrame(frameRef.f.getCanonicalName("theta")))
+				dupNode.addFrame(frameRef);
+			
+			return dupId;
+		}
+			
 		
 		else {
 			
@@ -230,9 +255,6 @@ public class StructuredTree implements Serializable {
 			
 			/* make entry in ddTreeToIdMap */
 			this.ddTreeToIdMap.put(node.getBeliefAsDDTree(), id);
-			
-			/* make entry in nodeIdToFrameIdMap */
-			this.nodeIdToFrameIdMap.put(id, node.getFramework().frameID);
 			
 			return id;
 		}

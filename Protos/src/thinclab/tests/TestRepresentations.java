@@ -38,13 +38,13 @@ import thinclab.representations.belieftreerepresentations.StaticBeliefTree;
 import thinclab.representations.conditionalplans.ConditionalPlanGraph;
 import thinclab.representations.conditionalplans.ConditionalPlanTree;
 import thinclab.representations.conditionalplans.WalkablePolicyTree;
+import thinclab.representations.modelrepresentations.FactoredMj;
 import thinclab.representations.modelrepresentations.MJ;
 import thinclab.representations.policyrepresentations.PolicyGraph;
 import thinclab.solvers.OfflinePBVISolver;
 import thinclab.solvers.OfflineSymbolicPerseus;
 import thinclab.solvers.OnlineIPBVISolver;
 import thinclab.solvers.OnlineInteractiveSymbolicPerseus;
-import thinclab.solvers.OnlineValueIterationSolver;
 import thinclab.utils.CustomConfigurationFactory;
 
 /*
@@ -190,42 +190,23 @@ class TestRepresentations {
 	}
 	
 	@Test
-	void testStaticPolicyTree() {
-		System.out.println("Running testStaticPolicyTree()");
+	void testFactoredMJ() {
+		LOGGER.info("Testing factored MJ");
 		
-		POMDP pomdp = new POMDP("/home/adityas/git/repository/Protos/domains/tiger.95.SPUDD.txt");
-	
-		OfflineSymbolicPerseus solver = 
-				new OfflineSymbolicPerseus(
-						pomdp, 
-						new SSGABeliefExpansion(pomdp, 20, 1), 
-						5, 100);
-		
-		solver.solve();
-		
-		ConditionalPlanTree T = new ConditionalPlanTree(solver, 5);
-		T.buildTree();
-		
-		System.out.println(T.getDotString());
-//		assertTrue(T.idToNodeMap.size() == 9);
-//		
-		IPOMDPParser parser = new IPOMDPParser(this.l1DomainFile);
+		IPOMDPParser parser = 
+				new IPOMDPParser(
+						"/home/adityas/git/repository/Protos/domains/"
+						+ "tiger.L1multiple_new_parser.txt");
 		parser.parseDomain();
 		
-		IPOMDP tigerL1IPOMDP = new IPOMDP(parser, 7, 3);
+		IPOMDP ipomdp = new IPOMDP(parser, 3, 10);
 		
-		OnlineIPBVISolver isolver = 
-				new OnlineIPBVISolver(
-						tigerL1IPOMDP, 
-						new FullInteractiveBeliefExpansion(tigerL1IPOMDP), 
-						1, 100);
-
-		isolver.solveCurrentStep();
-//		System.out.println(isolver.expansionStrategy.getBeliefPoints().stream().map(b -> isolver.f.getBeliefString(b)).collect(Collectors.toList()));
-		ConditionalPlanTree sT = new ConditionalPlanTree(isolver, 3);
-		sT.buildTree();
+		FactoredMj mj = new FactoredMj(ipomdp.lowerLevelSolutions, 3);
+		mj.buildTree();
 		
-		System.out.println(sT.getDotString());
+		LOGGER.debug(mj.getDotString());
+		
+		LOGGER.debug(ipomdp.multiFrameMJ.MJs.get(0).getDotString());
 	}
 	
 	@Test
