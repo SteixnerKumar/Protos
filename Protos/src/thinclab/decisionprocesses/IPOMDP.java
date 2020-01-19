@@ -42,6 +42,7 @@ import thinclab.legacy.OP;
 import thinclab.legacy.StateVar;
 import thinclab.parsers.IPOMDPParser;
 import thinclab.parsers.ParseSPUDD;
+import thinclab.representations.modelrepresentations.FactoredMj;
 import thinclab.representations.modelrepresentations.MJ;
 import thinclab.representations.modelrepresentations.MultiFrameMJ;
 import thinclab.solvers.BaseSolver;
@@ -79,6 +80,7 @@ public class IPOMDP extends POMDP {
 	 */
 	public MJ Mj;
 	public MultiFrameMJ multiFrameMJ;
+	public FactoredMj factoredMj;
 	public double mjMergeThreshold = 0;
 	
 	/*
@@ -577,8 +579,9 @@ public class IPOMDP extends POMDP {
 		LOGGER.info("Solved lower frames");
 		
 		/* initialize MJ */
-		solvedFrames.forEach(mj -> mj.setMergeThreshold(this.mjMergeThreshold));
-		this.multiFrameMJ = new MultiFrameMJ(solvedFrames);
+//		solvedFrames.forEach(mj -> mj.setMergeThreshold(this.mjMergeThreshold));
+//		this.multiFrameMJ = new MultiFrameMJ(solvedFrames);
+		this.factoredMj = new FactoredMj(this.lowerLevelSolutions, this.mjLookAhead);
 
 		/* Call GC to free up memory used by lower frame solvers and belief searches */
 		LOGGER.debug("Calling GC after solving lower frames");
@@ -773,8 +776,11 @@ public class IPOMDP extends POMDP {
 		
 		LOGGER.debug("Making M_j transition DD");
 		
+//		DD PMjPGivenOjPAj = 
+//				this.multiFrameMJ.getPMjPGivenMjOjPAj(this.ddMaker, this.Aj, this.OmegaJNames);
+		
 		DD PMjPGivenOjPAj = 
-				this.multiFrameMJ.getPMjPGivenMjOjPAj(this.ddMaker, this.Aj, this.OmegaJNames);
+				this.factoredMj.getPMjPGivenMjThetajOjPAj(this.ddMaker, this.OmegaJNames);
 		
 		LOGGER.debug("f(Mj', Mj, Oj', Aj) contains variables " 
 				+ Arrays.toString(PMjPGivenOjPAj.getVarSet()));
@@ -1218,16 +1224,20 @@ public class IPOMDP extends POMDP {
 		LOGGER.debug("Reinitializing Mj dependents according to new Mj");
 		
 		/* rebuild  P(Aj | Mj) */
-		this.currentAjGivenMj = this.multiFrameMJ.getAjGivenMj(this.ddMaker, this.Aj);
-		LOGGER.debug("f(Aj, Mj) for all Ajs for current look ahead horizon initialized");
+//		this.currentAjGivenMj = this.multiFrameMJ.getAjGivenMj(this.ddMaker, this.Aj);
+//		LOGGER.debug("f(Aj, Mj) for all Ajs for current look ahead horizon initialized");
+		this.currentAjGivenMj = this.factoredMj.getPAjGivenMjThetaj(this.ddMaker);
+		LOGGER.debug("P(Aj| Mj, Thetaj) initialized");
+		LOGGER.debug(this.currentAjGivenMj.toDDTree());
 		
 		/* rebuild  P(Thetaj | Mj) */
-		this.currentThetajGivenMj = this.multiFrameMJ.getThetajGivenMj(this.ddMaker, this.ThetaJ);
-		LOGGER.debug("f(Thetaj, Mj) for all Thetajs for current look ahead horizon initialized");
+//		this.currentThetajGivenMj = this.multiFrameMJ.getThetajGivenMj(this.ddMaker, this.ThetaJ);
+//		LOGGER.debug("f(Thetaj, Mj) for all Thetajs for current look ahead horizon initialized");
 		
 		/* rebuild  P(Mj' | Mj, Aj, Oj') */
 		this.currentMjPGivenMjOjPAj = this.makeOpponentModelTransitionDD();
-		LOGGER.debug("f(Mj', Aj, Mj, Oj') initialized");
+		LOGGER.debug("P(Mj'| Aj, Mj, Oj', Thetaj) initialized");
+		LOGGER.debug(this.currentMjPGivenMjOjPAj.toDDTree());
 		
 		/* check if P(Mj' | Mj, Aj, Oj') CPD is valid */
 		DD cpdSum = 
@@ -1422,9 +1432,13 @@ public class IPOMDP extends POMDP {
 		 * Should be called every time opponent model is changed or when it traverses the next
 		 * time steps
 		 */
+//		this.S.set(
+//				this.MjVarPosition, 
+//				this.multiFrameMJ.getOpponentModelStateVar(
+//						this.MjVarPosition));
 		this.S.set(
 				this.MjVarPosition, 
-				this.multiFrameMJ.getOpponentModelStateVar(
+				this.factoredMj.getOpponentModelStateVar(
 						this.MjVarPosition));
 		
 		LOGGER.debug("IS initialized to " + this.S);

@@ -32,6 +32,7 @@ import thinclab.exceptions.VariableNotFoundException;
 import thinclab.exceptions.ZeroProbabilityObsException;
 import thinclab.legacy.DD;
 import thinclab.legacy.OP;
+import thinclab.legacy.StateVar;
 import thinclab.parsers.IPOMDPParser;
 import thinclab.representations.belieftreerepresentations.DynamicBeliefTree;
 import thinclab.representations.belieftreerepresentations.StaticBeliefTree;
@@ -206,7 +207,34 @@ class TestRepresentations {
 		
 		LOGGER.debug(mj.getDotString());
 		
+		LOGGER.debug(ipomdp.multiFrameMJ.MJs.get(1).getDotString());
 		LOGGER.debug(ipomdp.multiFrameMJ.MJs.get(0).getDotString());
+		
+		StateVar Bj = mj.getOpponentModelStateVar(ipomdp.MjVarPosition);
+		LOGGER.debug(Bj);
+//		
+		ipomdp.ddMaker.clearContext();
+		List<StateVar> vars = new ArrayList<StateVar>();
+		vars.addAll(ipomdp.S);
+		vars.add(new StateVar(Bj.name, ipomdp.MjVarPosition, Bj.valNames));
+		vars.add(new StateVar(
+				"Theta_j", 
+				ipomdp.thetaVarPosition, 
+				new String[] {"theta/0", "theta/1"}));
+		vars.add(
+				new StateVar(
+						"A_j", 
+						ipomdp.AjVarStartPosition, 
+						ipomdp.Aj.stream().toArray(String[]::new)));
+		vars.addAll(ipomdp.Omega);
+		
+		vars.add(ipomdp.MjVarPosition, Bj);
+		
+		ipomdp.ddMaker.clearContext();
+		ipomdp.ddMaker.addVariables(vars);
+		
+		ipomdp.ddMaker.primeVariables();
+		mj.getPAjGivenMjThetaj(ipomdp.ddMaker);
 	}
 	
 	@Test

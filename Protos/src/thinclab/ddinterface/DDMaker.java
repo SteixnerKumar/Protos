@@ -13,9 +13,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map.Entry;
 
 import org.apache.log4j.Logger;
+
+import thinclab.legacy.StateVar;
 
 
 public class DDMaker implements Serializable {
@@ -41,6 +44,12 @@ public class DDMaker implements Serializable {
 	/*
 	 * Methods for variables addition
 	 */
+	
+	public void addVariables(List<StateVar> vars) {
+		
+		for (StateVar var: vars)
+			this.addVariable(var.name, var.valNames);
+	}
 	
 	public void addVariable(String varName, String[] children) {
 		/*

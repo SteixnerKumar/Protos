@@ -190,9 +190,12 @@ public class StructuredTree implements Serializable {
 								obs.toArray(new String[obs.size()]));
 				
 				/* make policy node */
-				BeliefNode newNode = new BeliefNode(frameSolverRef, nextBelief);
+				BeliefNode newNode = 
+						new BeliefNode(
+								new ArrayList<BaseSolver>(parentNode.getFrames().values()), 
+								nextBelief);
 				
-				int newNodeId = this.populateInternalMaps(newNode, frameSolverRef);
+				int newNodeId = this.populateInternalMaps(newNode);
 				
 				if (!this.edgeMap.containsKey(parentNode.id))
 					this.edgeMap.put(parentNode.id, new HashMap<List<String>, Integer>());
@@ -224,22 +227,12 @@ public class StructuredTree implements Serializable {
 	
 	// ----------------------------------------------------------------------------------------
 	
-	public int populateInternalMaps(BeliefNode node, BaseSolver frameRef) {
+	public int populateInternalMaps(BeliefNode node) {
 		
 		/* check if this belief already exists in either frame */
 		if (this.ddTreeToIdMap.containsKey(node.getBeliefAsDDTree())) {
 			
 			int dupId = this.ddTreeToIdMap.get(node.getBeliefAsDDTree());
-			BeliefNode dupNode = (BeliefNode) this.idToNodeMap.get(dupId);
-			
-			/*
-			 * If this is a repeated node with only difference being the frame,
-			 * Then add new frame reference to the old node instead of creating a new
-			 * copy
-			 */
-			if (!dupNode.isInFrame(frameRef.f.getCanonicalName("theta")))
-				dupNode.addFrame(frameRef);
-			
 			return dupId;
 		}
 			
