@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import thinclab.belief.FullBeliefExpansion;
+import thinclab.decisionprocesses.FIPOMDP;
 import thinclab.decisionprocesses.IPOMDP;
 import thinclab.legacy.DD;
 import thinclab.legacy.Global;
@@ -50,6 +51,21 @@ class TestIPOMDP {
 
 	@AfterEach
 	void tearDown() throws Exception {
+	}
+	
+	@Test
+	void testFIPOMDPInit() throws Exception {
+		
+		LOGGER.info("Testing FIPOMDP");
+		
+		IPOMDPParser parser = 
+				new IPOMDPParser(
+						"/home/adityas/git/repository/Protos/domains/tiger.L1multiple_new_parser.txt");
+		parser.parseDomain();
+		
+		LOGGER.info("Calling empty constructor");
+		FIPOMDP ipomdp = new FIPOMDP(parser, 3, 10);
+		
 	}
 	
 	@Test

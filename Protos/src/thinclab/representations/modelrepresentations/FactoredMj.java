@@ -10,7 +10,9 @@ package thinclab.representations.modelrepresentations;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 import org.apache.log4j.Logger;
@@ -37,6 +39,7 @@ public class FactoredMj extends StructuredTree implements Serializable, LowerLev
 	/* Store references to different solved frames */
 	private List<BaseSolver> lowerFrames = new ArrayList<BaseSolver>();
 	private int H = -1;
+	private int T = 0;
 	
 	/* for leaves to expand next */
 	private List<Integer> nextStepRoots = new ArrayList<Integer>();
@@ -83,7 +86,6 @@ public class FactoredMj extends StructuredTree implements Serializable, LowerLev
 
 		this.buildTree();
 		LOGGER.debug("Factored MJ has " + this.idToNodeMap.size() + " models");
-		LOGGER.debug(this.idToNodeMap);
 	}
 	
 	// -----------------------------------------------------------------------------------------
@@ -92,6 +94,8 @@ public class FactoredMj extends StructuredTree implements Serializable, LowerLev
 		/*
 		 * Builds the full OnlinePolicyTree upto maxT
 		 */
+		
+		this.nextStepRoots.forEach(r -> this.idToNodeMap.get(r).setStartNode());
 		
 		List<Integer> prevNodes = new ArrayList<Integer>();
 		prevNodes.addAll(this.nextStepRoots);
@@ -251,6 +255,112 @@ public class FactoredMj extends StructuredTree implements Serializable, LowerLev
 		}
 		
 		return OP.reorder(PBjPGivenBjAjThetajOjPDDTree.toDD());
+	}
+	
+	public DDTree getInitBelief(DDMaker ddMaker, DDTree prior) {
+		/*
+		 * Constructs an initial belief DDTree based on the current roots
+		 */
+		
+		LOGGER.debug("Making initial belief");
+		DDTree beliefMj = ddMaker.getDDTreeFromSequence(new String[] {"M_j"});
+		
+		if (prior == null) {
+			
+			int mjCount = 0;
+			
+			mjCount +=
+				this.idToNodeMap.values().stream()
+					.filter(n -> n.startNode)
+					.map(i -> i.id)
+					.collect(Collectors.toList()).size();
+				
+			List<Integer> roots = 
+					this.idToNodeMap.values().stream()
+						.filter(n -> n.startNode)
+						.map(i -> i.id)
+						.collect(Collectors.toList());
+			
+			/* Uniform distribution over all current roots */
+			for (int node : roots) {
+				
+				try {
+					beliefMj.setValueAt(
+							"b_" + node, 
+							(1.0 / mjCount));
+				} 
+				
+				catch (Exception e) {
+					LOGGER.error("While making initial Mj: " + e.getMessage());
+					e.printStackTrace();
+				}
+			}
+			
+		}
+		
+		/* else use previous belief values */
+		else {
+			
+			for (Entry<String, DDTree> entry : prior.children.entrySet()) {
+				
+				DDTree child = entry.getValue();
+				
+				/* add all non leaf vars */
+				if (!child.varName.contentEquals("LeafVar"))
+					beliefMj.addChild(entry.getKey(), child);
+				
+				else if (child.varName.contentEquals("LeafVar") 
+						&& ((DDTreeLeaf) child).val != 0.0)
+					beliefMj.addChild(entry.getKey(), child);
+			}
+			
+		}
+		
+		LOGGER.debug("Made initial belief");
+		return beliefMj;
+	}
+	
+	public void step(HashSet<String> nonZeroMj) {
+		/*
+		 * Moves to the next time step
+		 */
+		
+		this.nextStepRoots = 
+				this.nextStepRoots.stream()
+					.filter(r -> nonZeroMj.contains("b_" + r))
+					.collect(Collectors.toList());
+		
+		this.T += 1;
+		LOGGER.info("Mj currently tracking time step " + this.T);
+		
+		this.buildTree();
+	}
+	
+	public String getOptimalActionAtNode(String node, String frame) {
+		/*
+		 * Returns j's optimal action at the belief point at node
+		 */
+		
+		return ((BeliefNode) this.idToNodeMap.get(
+						FactoredMj.getBeliefIDFromModel(node))).getOptimalActions().get(frame);
+	}
+	
+	public static int getBeliefIDFromModel(String beliefLabel) {
+		/*
+		 * Splits the model label to find out frameID
+		 */
+		return Integer.valueOf(beliefLabel.split("_")[1]);
+	}
+	
+	public String getBeliefTextAtNode(String node) {
+		/*
+		 * Returns j's beliefs at node
+		 * 
+		 * Note that this method only returns the string representation and not the actual
+		 * usable belief
+		 */
+		
+		return this.idToNodeMap.get(FactoredMj.getBeliefIDFromModel(node)).sBelief;
 	}
 	
 	// -----------------------------------------------------------------------------------------

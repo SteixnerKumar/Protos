@@ -44,7 +44,6 @@ import thinclab.parsers.IPOMDPParser;
 import thinclab.parsers.ParseSPUDD;
 import thinclab.representations.modelrepresentations.FactoredMj;
 import thinclab.representations.modelrepresentations.MJ;
-import thinclab.representations.modelrepresentations.MultiFrameMJ;
 import thinclab.solvers.BaseSolver;
 import thinclab.solvers.OfflineSymbolicPerseus;
 
@@ -52,10 +51,14 @@ import thinclab.solvers.OfflineSymbolicPerseus;
  * @author adityas
  *
  */
-public class IPOMDP extends POMDP {
-
-	private static final long serialVersionUID = 4973485302724576384L;
-	private static final Logger LOGGER = Logger.getLogger(IPOMDP.class);
+public class FIPOMDP extends POMDP {
+	
+	/*
+	 * Defines a fully factored IPOMDP
+	 */
+	
+	private static final long serialVersionUID = -3684527684720285515L;
+	private static final Logger LOGGER = Logger.getLogger(FIPOMDP.class);
 	
 	/*
 	 * Reference to Parser object and info extract from parser
@@ -78,8 +81,6 @@ public class IPOMDP extends POMDP {
 	 * Store a local reference to OpponentModel object to get easier access to node
 	 * indices and all that
 	 */
-	public MJ Mj;
-	public MultiFrameMJ multiFrameMJ;
 	public FactoredMj factoredMj;
 	public double mjMergeThreshold = 0;
 	
@@ -114,10 +115,10 @@ public class IPOMDP extends POMDP {
 	/*
 	 * Variables for current look ahead horizon
 	 */
-	public DD currentMjPGivenMjOjPAj;
+	public DD currentPMjPGivenMjThetajOjPAj;
 	public DD currentThetajGivenMj;
 	public DD currentTau;
-	public DD currentAjGivenMj;
+	public DD currentPAjGivenMjThetaj;
 	public DD currentBelief = null;
 	
 	public HashMap<String, DD[]> currentOi;
@@ -144,14 +145,14 @@ public class IPOMDP extends POMDP {
 	
 	// ----------------------------------------------------------------------------------------
 	
-	public IPOMDP(IPOMDPParser parsedFrame, int mjlookAhead, int mjSearchDepth) {
+	public FIPOMDP(IPOMDPParser parsedFrame, int mjlookAhead, int mjSearchDepth) {
 		/*
 		 * Initialize from a IPOMDPParser object
 		 */
 		
 		try {
 			
-			LOGGER.info("Initializing IPOMDP from parser.");
+			LOGGER.info("Initializing FIPOMDP from parser.");
 			
 			this.initializeFromParsers(parsedFrame);
 			this.setMjLookAhead(mjlookAhead);
@@ -178,7 +179,7 @@ public class IPOMDP extends POMDP {
 		}
 	}
 	
-	public IPOMDP(
+	public FIPOMDP(
 			IPOMDPParser parsedFrame, 
 			int mjlookAhead, 
 			int mjSearchDepth, 
@@ -186,7 +187,7 @@ public class IPOMDP extends POMDP {
 		
 		try {
 			
-			LOGGER.info("Initializing IPOMDP from parser.");
+			LOGGER.info("Initializing FIPOMDP from parser.");
 			
 			this.mjMergeThreshold = threshold;
 			
@@ -216,12 +217,12 @@ public class IPOMDP extends POMDP {
 		
 	}
 
-	public IPOMDP(String fileName) {
+	public FIPOMDP(String fileName) {
 		super(fileName);
 		LOGGER.info("IPOMDP initialised from file: " + fileName);
 	}
 	
-	public IPOMDP() {
+	public FIPOMDP() {
 		super();
 		LOGGER.info("IPOMDP initialised");
 	}
@@ -346,7 +347,7 @@ public class IPOMDP extends POMDP {
 		this.level = 1;
 		
 		/* set belief operations handler */
-		this.bOPs = new IBeliefOps(this);
+//		this.bOPs = new IBeliefOps(this);
 		
 		/* pre compute observation combinations */
 		this.computeAllPossibleObsCombinations();
@@ -579,8 +580,7 @@ public class IPOMDP extends POMDP {
 		LOGGER.info("Solved lower frames");
 		
 		/* initialize MJ */
-		solvedFrames.forEach(mj -> mj.setMergeThreshold(this.mjMergeThreshold));
-		this.multiFrameMJ = new MultiFrameMJ(solvedFrames);
+		this.factoredMj = new FactoredMj(this.lowerLevelSolutions, this.mjLookAhead);
 
 		/* Call GC to free up memory used by lower frame solvers and belief searches */
 		LOGGER.debug("Calling GC after solving lower frames");
@@ -692,27 +692,6 @@ public class IPOMDP extends POMDP {
 	
 	// ------------------------------------------------------------------------------------------
 	
-	public void setUpMj() {
-		/*
-		 * Constructs opponents' models 
-		 * 
-		 * We are assuming the physical states S to be independent of the belief 
-		 * over opponents' beliefs. So the opponents' model M will be a separate state
-		 * variable in addition to the physical states S.
-		 */
-		
-		/*
-		 * Use i's parsed state variables for physical states S. For M_j, use OpponentModel
-		 * API 
-		 * 
-		 * TODO: in case of IPOMDP frames, remove lower level agent models from the
-		 * state var staging list before using it to create state vars for current level.
-		 */
-		
-		/* Finally, add the oppModel state var to the staging list */
-		this.S.add(this.Mj.getOpponentModelStateVar(this.MjVarPosition));
-	}
-	
 	public void setUpOmegaJ() throws ParserException {
 		/*
 		 * Adds observation for agent j
@@ -776,7 +755,7 @@ public class IPOMDP extends POMDP {
 		LOGGER.debug("Making M_j transition DD");
 		
 		DD PMjPGivenOjPAj = 
-				this.multiFrameMJ.getPMjPGivenMjOjPAj(this.ddMaker, this.Aj, this.OmegaJNames);
+				this.factoredMj.getPMjPGivenMjThetajOjPAj(this.ddMaker, this.OmegaJNames);
 		
 		LOGGER.debug("f(Mj', Mj, Oj', Aj) contains variables " 
 				+ Arrays.toString(PMjPGivenOjPAj.getVarSet()));
@@ -1069,7 +1048,7 @@ public class IPOMDP extends POMDP {
 			
 			DD RSMj = 
 					OP.addMultVarElim( 
-							new DD[] {this.currentAjGivenMj, actionCosts.get(Ai)},
+							new DD[] {this.currentPAjGivenMjThetaj, actionCosts.get(Ai)},
 							this.AjStartIndex);
 			
 			LOGGER.debug("For Ai=" + Ai + " R(S,Mj) has vars " 
@@ -1219,49 +1198,62 @@ public class IPOMDP extends POMDP {
 		
 		LOGGER.debug("Reinitializing Mj dependents according to new Mj");
 		
-		/* rebuild  P(Aj | Mj) */
-		this.currentAjGivenMj = this.multiFrameMJ.getAjGivenMj(this.ddMaker, this.Aj);
-		LOGGER.debug("f(Aj, Mj) for all Ajs for current look ahead horizon initialized");
-		
-		/* rebuild  P(Thetaj | Mj) */
-		this.currentThetajGivenMj = this.multiFrameMJ.getThetajGivenMj(this.ddMaker, this.ThetaJ);
-		LOGGER.debug("f(Thetaj, Mj) for all Thetajs for current look ahead horizon initialized");
+		this.currentPAjGivenMjThetaj = this.factoredMj.getPAjGivenMjThetaj(this.ddMaker);
+		LOGGER.debug("P(Aj| Mj, Thetaj) initialized");
 		
 		/* rebuild  P(Mj' | Mj, Aj, Oj') */
-		this.currentMjPGivenMjOjPAj = this.makeOpponentModelTransitionDD();
+		this.currentPMjPGivenMjThetajOjPAj = this.makeOpponentModelTransitionDD();
 		LOGGER.debug("P(Mj'| Aj, Mj, Oj', Thetaj) initialized");
 		
 		/* check if P(Mj' | Mj, Aj, Oj') CPD is valid */
 		DD cpdSum = 
 				OP.addMultVarElim(
-						this.currentMjPGivenMjOjPAj, 
+						this.currentPMjPGivenMjThetajOjPAj, 
 						this.MjVarIndex + (this.S.size() + this.Omega.size()));
 		
 		if (OP.maxAll(OP.abs(OP.sub(DD.one, cpdSum))) < 1e-8)
-			LOGGER.debug("f(Mj', Aj, Mj, Oj') distribution verified");
+			LOGGER.debug("P(Mj'| Aj, Mj, Oj', Thetaj) distribution verified");
 		
 		else {
-			LOGGER.error("f(Mj', Aj, Mj, Oj') sums out to " + cpdSum);
+			LOGGER.error("P(Mj'| Aj, Mj, Oj', Thetaj) sums out to " + cpdSum);
 			System.exit(-1);
 		}
 		
 		if (this.currentBelief == null) {
-			DD mjInit = this.multiFrameMJ.getMjInitBelief(this.ddMaker, null).toDD();
+			DD mjInit = this.factoredMj.getInitBelief(this.ddMaker, null).toDD();
 			DD initS = this.initBeliefDdTree.toDD();
 			
-			this.currentBelief = OP.reorder(OP.mult(mjInit, initS));
+			DDTree initTheta = this.ddMaker.getDDTreeFromSequence(new String[] {"Theta_j"});
+			double initThetaProb = (1.0 / initTheta.children.size());
+			
+			try {
+				for (String child: initTheta.children.keySet())
+					initTheta.setValueAt(child, initThetaProb);
+			}
+			
+			catch (Exception e) {
+				LOGGER.error("While making initial belief");
+				e.printStackTrace();
+				System.exit(-1);
+			}
+			
+			DD initThetaDD = OP.reorder(initTheta.toDD());
+			
+			/* make joint distribution */
+			this.currentBelief = OP.reorder(OP.multN(new DD[] {mjInit, initS, initThetaDD}));
 		}
+		
 		LOGGER.debug("Current belief set to: \r\n" + this.currentBelief.toDDTree());
 		
 		/* compute tau and store */
 			
 		this.currentTau = 
 				OP.addMultVarElim(
-						ArrayUtils.add(this.currentOj, this.currentMjPGivenMjOjPAj), 
+						ArrayUtils.add(this.currentOj, this.currentPMjPGivenMjThetajOjPAj), 
 						this.obsJVarPrimeIndices);
 		
 		/* null this.currentMjPGivenMjOjPAj to save memory */
-		this.currentMjPGivenMjOjPAj = null;
+		this.currentPMjPGivenMjThetajOjPAj = null;
 		
 		LOGGER.debug("TAU contains vars " + Arrays.toString(this.currentTau.getVarSet()));
 		
@@ -1346,7 +1338,7 @@ public class IPOMDP extends POMDP {
 				new HashSet<String>(this.toMap(belief).get("M_j").keySet());
 		
 		/* Expand from non zero Mj to create new Mj space */
-		this.multiFrameMJ.step(belief, this.mjLookAhead, nonZeroMj);
+		this.factoredMj.step(nonZeroMj);
 		
 		/* initialize new IS and commit variables */
 		this.updateMjInIS();
@@ -1354,7 +1346,7 @@ public class IPOMDP extends POMDP {
 		/* make current belief */
 		this.currentBelief = 
 				OP.reorder(
-						this.multiFrameMJ.getMjInitBelief(
+						this.factoredMj.getInitBelief(
 								this.ddMaker, beliefDDTree).toDD());
 	}
 	
@@ -1424,9 +1416,10 @@ public class IPOMDP extends POMDP {
 		 * Should be called every time opponent model is changed or when it traverses the next
 		 * time steps
 		 */
+
 		this.S.set(
 				this.MjVarPosition, 
-				this.multiFrameMJ.getOpponentModelStateVar(
+				this.factoredMj.getOpponentModelStateVar(
 						this.MjVarPosition));
 		
 		LOGGER.debug("IS initialized to " + this.S);
@@ -1517,14 +1510,7 @@ public class IPOMDP extends POMDP {
 		 * Gets the lower level belief state map for the given valName
 		 */
 		
-		return this.multiFrameMJ.getBeliefTextAtNode(valName);
-	}
-	
-	public String getOptimalActionAtMj(String mjNode) {
-		/*
-		 * Just a wrapped up call to OpponentModels getOptimalActionAtNode method 
-		 */
-		return this.Mj.getOptimalActionAtNode(mjNode);
+		return this.factoredMj.getBeliefTextAtNode(valName);
 	}
 	
 	public HashMap<String, HashMap<String, Float>> toMapWithTheta(DD belief) {
@@ -1560,25 +1546,27 @@ public class IPOMDP extends POMDP {
 		/* make lower level beliefs */
 		List<JsonObject> lowerLevelBeliefsJSONList = new ArrayList<JsonObject>();
 		
-		for (String node : map.get("M_j").keySet()) {
-			
-			/* make a key value set of belief, optimal action, and frame */
-			JsonObject currentBeliefJSON = new JsonObject();
-			
-			currentBeliefJSON.add("belief_j", 
-					gsonHandler.fromJson(this.getLowerLevelBeliefLabel(node), JsonObject.class));
-			currentBeliefJSON.add("A_j", 
-					new JsonPrimitive(multiFrameMJ.getOptimalActionAtNode(node)));
-			currentBeliefJSON.add("Theta_j", 
-					new JsonPrimitive("theta/" + IPOMDP.getFrameIDFromVarName(node)));
-			
-			/* make key val pair for probability of mj */
-			JsonObject beliefValueJSON = new JsonObject();
-			
-			beliefValueJSON.add("model", currentBeliefJSON);
-			beliefValueJSON.add("prob", new JsonPrimitive(map.get("M_j").get(node)));
-			
-			lowerLevelBeliefsJSONList.add(beliefValueJSON);
+		for (String frame: map.get("Theta_j").keySet()) {
+			for (String node : map.get("M_j").keySet()) {
+				
+				/* make a key value set of belief, optimal action, and frame */
+				JsonObject currentBeliefJSON = new JsonObject();
+				
+				currentBeliefJSON.add("belief_j", 
+						gsonHandler.fromJson(this.getLowerLevelBeliefLabel(node), JsonObject.class));
+				currentBeliefJSON.add("A_j", 
+						new JsonPrimitive(this.factoredMj.getOptimalActionAtNode(node, frame)));
+				currentBeliefJSON.add("Theta_j",
+						new JsonPrimitive(frame));
+				
+				/* make key val pair for probability of mj */
+				JsonObject beliefValueJSON = new JsonObject();
+				
+				beliefValueJSON.add("model", currentBeliefJSON);
+				beliefValueJSON.add("prob", new JsonPrimitive(map.get("M_j").get(node)));
+				
+				lowerLevelBeliefsJSONList.add(beliefValueJSON);
+			}
 		}
 		
 		/* add mj belief*/
