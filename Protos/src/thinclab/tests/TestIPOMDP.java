@@ -66,6 +66,49 @@ class TestIPOMDP {
 		LOGGER.info("Calling empty constructor");
 		FIPOMDP ipomdp = new FIPOMDP(parser, 3, 10);
 		
+//		LOGGER.debug("Current belief for FIPOMDP is " + ipomdp.getCurrentBelief().toDDTree());
+		LOGGER.debug("Current belief for FIPOMDP is " + ipomdp.toMap(ipomdp.getCurrentBelief()));
+		String fbel1 = ipomdp.toMap(ipomdp.getCurrentBelief()).toString();
+		
+		DD nextBel = 
+				ipomdp.beliefUpdate(
+						ipomdp.getCurrentBelief(), 
+						"listen", 
+						new String[] {"growl-left", "silence"});
+		
+//		LOGGER.debug("Next belief for FIPOMDP is " + nextBel.toDDTree());
+		LOGGER.debug("Next belief for FIPOMDP is " + ipomdp.toMap(nextBel));
+		String fbel2 = ipomdp.toMap(nextBel).toString();
+
+		
+		nextBel = 
+				ipomdp.beliefUpdate(
+						nextBel, 
+						"listen", 
+						new String[] {"growl-left", "silence"});
+		
+		LOGGER.debug("Next belief is " + ipomdp.toMap(nextBel));
+		String fbel3 = ipomdp.toMap(nextBel).toString();
+		
+//		
+		nextBel = 
+				ipomdp.beliefUpdate(
+						nextBel, 
+						"listen", 
+						new String[] {"growl-left", "silence"});
+		
+		LOGGER.debug("Next belief is " + nextBel.toDDTree());
+		String fbel4 = ipomdp.toMap(nextBel).toString();
+//		LOGGER.debug("Next belief is " + ipomdp.toMap(nextBel));
+		
+		ipomdp.step(ipomdp.getCurrentBelief(), "listen", new String[] {"growl-left", "silence"});
+		
+//		LOGGER.debug(ipomdp.getCurrentBelief().toDDTree());
+		
+		ipomdp.step(ipomdp.getCurrentBelief(), "listen", new String[] {"growl-left", "silence"});
+		ipomdp.step(ipomdp.getCurrentBelief(), "listen", new String[] {"growl-left", "silence"});
+//		LOGGER.debug(ipomdp.factoredMj.getDotString());
+		
 	}
 	
 	@Test
@@ -78,6 +121,12 @@ class TestIPOMDP {
 		
 		LOGGER.info("Calling empty constructor");
 		IPOMDP ipomdp = new IPOMDP(parser, 3, 10);
+		
+		ipomdp.step(ipomdp.getCurrentBelief(), "listen", new String[] {"growl-left", "silence"});
+		ipomdp.step(ipomdp.getCurrentBelief(), "listen", new String[] {"growl-left", "silence"});
+		ipomdp.step(ipomdp.getCurrentBelief(), "listen", new String[] {"growl-left", "silence"});
+		
+		
 		
 	}
 

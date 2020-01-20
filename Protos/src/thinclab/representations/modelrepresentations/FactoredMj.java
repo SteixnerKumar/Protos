@@ -257,15 +257,17 @@ public class FactoredMj extends StructuredTree implements Serializable, LowerLev
 		return OP.reorder(PBjPGivenBjAjThetajOjPDDTree.toDD());
 	}
 	
-	public DDTree getInitBelief(DDMaker ddMaker, DDTree prior) {
+	public DDTree getInitBelief(DDMaker ddMaker, DDTree prior) throws Exception {
 		/*
 		 * Constructs an initial belief DDTree based on the current roots
 		 */
 		
 		LOGGER.debug("Making initial belief");
-		DDTree beliefMj = ddMaker.getDDTreeFromSequence(new String[] {"M_j"});
+		DDTree beliefMj = null;
 		
 		if (prior == null) {
+			
+			beliefMj = ddMaker.getDDTreeFromSequence(new String[] {"M_j"});
 			
 			int mjCount = 0;
 			
@@ -301,19 +303,28 @@ public class FactoredMj extends StructuredTree implements Serializable, LowerLev
 		/* else use previous belief values */
 		else {
 			
-			for (Entry<String, DDTree> entry : prior.children.entrySet()) {
-				
-				DDTree child = entry.getValue();
-				
-				/* add all non leaf vars */
-				if (!child.varName.contentEquals("LeafVar"))
-					beliefMj.addChild(entry.getKey(), child);
-				
-				else if (child.varName.contentEquals("LeafVar") 
-						&& ((DDTreeLeaf) child).val != 0.0)
-					beliefMj.addChild(entry.getKey(), child);
-			}
+			beliefMj = ddMaker.getDDTreeFromSequence(new String[] {"Theta_j"});
 			
+			for (String frame: prior.children.keySet()) {
+				
+				DDTree frameTree = prior.atChild(frame);
+				DDTree bjTree = ddMaker.getDDTreeFromSequence(new String[] {"M_j"});
+				
+				for (Entry<String, DDTree> entry : frameTree.children.entrySet()) {
+					
+					DDTree child = entry.getValue();
+					
+					/* add all non leaf vars */
+					if (!child.varName.contentEquals("LeafVar"))
+						bjTree.addChild(entry.getKey(), child);
+					
+					else if (child.varName.contentEquals("LeafVar") 
+							&& ((DDTreeLeaf) child).val != 0.0)
+						bjTree.addChild(entry.getKey(), child);
+				}
+				
+				beliefMj.addChild(frame, bjTree);
+			}
 		}
 		
 		LOGGER.debug("Made initial belief");
@@ -329,6 +340,24 @@ public class FactoredMj extends StructuredTree implements Serializable, LowerLev
 				this.nextStepRoots.stream()
 					.filter(r -> nonZeroMj.contains("b_" + r))
 					.collect(Collectors.toList());
+		
+		/* clear old edges */
+		this.edgeMap.clear();
+		
+		/* clear old nodes */
+		for (int nodeId : new ArrayList<Integer>(this.idToNodeMap.keySet())) {
+			
+			if (!this.nextStepRoots.contains(nodeId)) {
+				
+				DDTree belief = ((BeliefNode) this.idToNodeMap.get(nodeId)).getBeliefAsDDTree();
+				
+				/* remove node */
+				this.idToNodeMap.remove(nodeId);
+				
+				/* remove belief */
+				this.ddTreeToIdMap.remove(belief);
+			}
+		}
 		
 		this.T += 1;
 		LOGGER.info("Mj currently tracking time step " + this.T);

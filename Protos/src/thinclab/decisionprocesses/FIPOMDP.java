@@ -27,6 +27,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
+import thinclab.belief.FIBeliefOps;
 import thinclab.belief.IBeliefOps;
 import thinclab.belief.SSGABeliefExpansion;
 import thinclab.ddinterface.DDTree;
@@ -51,7 +52,7 @@ import thinclab.solvers.OfflineSymbolicPerseus;
  * @author adityas
  *
  */
-public class FIPOMDP extends POMDP {
+public class FIPOMDP extends IPOMDP {
 	
 	/*
 	 * Defines a fully factored IPOMDP
@@ -116,7 +117,7 @@ public class FIPOMDP extends POMDP {
 	 * Variables for current look ahead horizon
 	 */
 	public DD currentPMjPGivenMjThetajOjPAj;
-	public DD currentThetajGivenMj;
+	public DD currentThetajPGivenThetaj;
 	public DD currentTau;
 	public DD currentPAjGivenMjThetaj;
 	public DD currentBelief = null;
@@ -219,12 +220,12 @@ public class FIPOMDP extends POMDP {
 
 	public FIPOMDP(String fileName) {
 		super(fileName);
-		LOGGER.info("IPOMDP initialised from file: " + fileName);
+		LOGGER.info("FIPOMDP initialised from file: " + fileName);
 	}
 	
 	public FIPOMDP() {
 		super();
-		LOGGER.info("IPOMDP initialised");
+		LOGGER.info("FIPOMDP initialised");
 	}
 	
 	// -----------------------------------------------------------------------------------------
@@ -347,7 +348,7 @@ public class FIPOMDP extends POMDP {
 		this.level = 1;
 		
 		/* set belief operations handler */
-//		this.bOPs = new IBeliefOps(this);
+		this.bOPs = new FIBeliefOps(this);
 		
 		/* pre compute observation combinations */
 		this.computeAllPossibleObsCombinations();
@@ -757,10 +758,36 @@ public class FIPOMDP extends POMDP {
 		DD PMjPGivenOjPAj = 
 				this.factoredMj.getPMjPGivenMjThetajOjPAj(this.ddMaker, this.OmegaJNames);
 		
-		LOGGER.debug("f(Mj', Mj, Oj', Aj) contains variables " 
+		LOGGER.debug("P(Mj'| Aj, Mj, Oj', Thetaj) contains variables " 
 				+ Arrays.toString(PMjPGivenOjPAj.getVarSet()));
 		
 		return PMjPGivenOjPAj;
+	}
+	
+	public DD makeThetajPGivenThetaj() {
+		/*
+		 * Makes same theta transition DD
+		 */
+		
+		DDTree Thetaj = this.ddMaker.getDDTreeFromSequence(new String[] {"Theta_j"});
+		
+		for (String frame: Thetaj.children.keySet()) {
+			
+			DDTree ThetajP = this.ddMaker.getDDTreeFromSequence(new String[] {"Theta_j'"});
+			
+			try {
+				ThetajP.setValueAt(frame, 1.0);
+				Thetaj.setDDAt(frame, ThetajP);
+			}
+			
+			catch (Exception e) {
+				LOGGER.error("While making Thetaj transitions");
+				e.printStackTrace();
+				System.exit(-1);
+			}
+		}
+		
+		return OP.reorder(Thetaj.toDD());
 	}
 	
 	public HashMap<String, DD[]> makeOi() {
@@ -1220,7 +1247,18 @@ public class FIPOMDP extends POMDP {
 		}
 		
 		if (this.currentBelief == null) {
-			DD mjInit = this.factoredMj.getInitBelief(this.ddMaker, null).toDD();
+			DD mjInit = null;
+			
+			try {
+				mjInit = this.factoredMj.getInitBelief(this.ddMaker, null).toDD();
+			}
+			
+			catch (Exception e) {
+				LOGGER.error("While making initial belief");
+				e.printStackTrace();
+				System.exit(-1);
+			}
+			
 			DD initS = this.initBeliefDdTree.toDD();
 			
 			DDTree initTheta = this.ddMaker.getDDTreeFromSequence(new String[] {"Theta_j"});
@@ -1277,7 +1315,9 @@ public class FIPOMDP extends POMDP {
 		
 		this.currentOj = this.makeOj();
 		LOGGER.debug("Oj initialized");
-
+		
+		this.currentThetajPGivenThetaj = this.makeThetajPGivenThetaj();
+		LOGGER.debug("P(Thetaj' | Thetaj) initialized");
 	}
 	
 	//------------------------------------------------------------------------------------------
@@ -1298,7 +1338,7 @@ public class FIPOMDP extends POMDP {
 		 */
 		
 		LOGGER.info("Taking action " + action + "\r\n"
-				+ " at belief " + this.toMapWithTheta(belief) + "\r\n"
+				+ " at belief " + this.toMap(belief) + "\r\n"
 				+ " with observation " + Arrays.toString(obs));
 		
 		/* perform belief update */
@@ -1308,7 +1348,7 @@ public class FIPOMDP extends POMDP {
 						action, 
 						obs);
 		
-		LOGGER.debug("Next belief is " + this.toMapWithTheta(nextBelief));
+		LOGGER.debug("Next belief is " + this.toMap(nextBelief));
 		
 		/* transform Mj space to include new models in the next belief with non zero probabilities */
 		this.transformMjSpace(nextBelief);
@@ -1343,11 +1383,19 @@ public class FIPOMDP extends POMDP {
 		/* initialize new IS and commit variables */
 		this.updateMjInIS();
 		
-		/* make current belief */
-		this.currentBelief = 
-				OP.reorder(
-						this.factoredMj.getInitBelief(
-								this.ddMaker, beliefDDTree).toDD());
+		try {
+			/* make current belief */
+			this.currentBelief = 
+					OP.reorder(
+							this.factoredMj.getInitBelief(
+									this.ddMaker, beliefDDTree).toDD());
+		}
+		
+		catch (Exception e) {
+			LOGGER.error("While making initial belief after step");
+			e.printStackTrace();
+			System.exit(-1);
+		}
 	}
 	
 	public DD pruneLowProbMjs(DD belief) {
@@ -1376,15 +1424,18 @@ public class FIPOMDP extends POMDP {
 			
 			if (minProb < 0.01 && minNode != null) {
 				
-				try {
-					LOGGER.debug("Pruning node " + minNode + " with prob. " + minProb);
-					beliefTree.setDDAt(minNode, new DDTreeLeaf(0.0));
-				}
-				
-				catch (Exception e) {
-					LOGGER.error("While pruning low probability nodes: " + e.getMessage());
-					e.printStackTrace();
-					System.exit(-1);
+				for (String frame: beliefTree.children.keySet()) {
+					
+					try {
+						LOGGER.debug("Pruning node " + minNode + " with prob. " + minProb);
+						beliefTree.atChild(frame).setDDAt(minNode, new DDTreeLeaf(0.0));
+					}
+					
+					catch (Exception e) {
+						LOGGER.error("While pruning low probability nodes: " + e.getMessage());
+						e.printStackTrace();
+						System.exit(-1);
+					}
 				}
 				
 				DD tree = OP.reorder(beliefTree.toDD());
@@ -1396,9 +1447,9 @@ public class FIPOMDP extends POMDP {
 										tree, 
 										ArrayUtils.subarray(
 												this.stateVarIndices, 
-												0, this.thetaVarPosition)));
+												0, this.AjVarStartPosition)));
 				
-				LOGGER.debug("Belief approximated to: " + this.toMapWithTheta(tree));
+				LOGGER.debug("Belief approximated to: " + this.toMap(tree));
 			
 				belief = tree;
 			}
