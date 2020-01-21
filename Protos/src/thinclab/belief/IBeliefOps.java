@@ -222,7 +222,7 @@ public class IBeliefOps extends BeliefOperations {
 						restrictedOi);
 		
 		/* Get TAU */
-		DD tauSummedOut = DPRef.currentTau;
+		DD tauSummedOut = DPRef.currentTauSummedOutTheta;
 		
 		/* Perform the sum out */
 		DD nextBelief = 

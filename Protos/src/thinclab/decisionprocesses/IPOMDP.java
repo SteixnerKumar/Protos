@@ -1262,7 +1262,7 @@ public class IPOMDP extends POMDP {
 						this.obsJVarPrimeIndices);
 		
 		/* computed summed out Tau */
-		this.currentTau = 
+		this.currentTauSummedOutTheta = 
 				OP.addMultVarElim(
 						OP.mult(this.currentTau, this.currentThetajGivenMj), 
 						this.stateVarIndices[this.thetaVarPosition]);

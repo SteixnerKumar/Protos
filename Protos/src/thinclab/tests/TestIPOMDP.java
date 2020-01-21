@@ -95,6 +95,7 @@ class TestIPOMDP {
 		ipomdp.step(ipomdp.getCurrentBelief(), "listen", new String[] {"growl-left", "silence"});
 		ipomdp.step(ipomdp.getCurrentBelief(), "listen", new String[] {"growl-left", "silence"});
 		
+		Global.clearHashtables();
 		
 		List<Long> otherTimes = new ArrayList<Long>();
 		
@@ -113,6 +114,9 @@ class TestIPOMDP {
 			
 			otherTimes.add((now - then) / 1000);
 		}
+		
+		Global.clearHashtables();
+		
 		
 		List<Long> times = new ArrayList<Long>();
 		
