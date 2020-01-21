@@ -118,6 +118,9 @@ public class IPOMDP extends POMDP {
 	public DD currentAjGivenMj;
 	public DD currentBelief = null;
 	
+	/* factors computed offline */
+	public DD currentTauSummedOutTheta;
+	
 	public HashMap<String, DD[]> currentOi;
 	public HashMap<String, DD[]> currentTi;
 	public HashMap<String, DD> currentRi;
@@ -1257,6 +1260,15 @@ public class IPOMDP extends POMDP {
 				OP.addMultVarElim(
 						ArrayUtils.add(this.currentOj, this.currentMjPGivenMjOjPAj), 
 						this.obsJVarPrimeIndices);
+		
+		/* computed summed out Tau */
+		this.currentTau = 
+				OP.addMultVarElim(
+						OP.mult(this.currentTau, this.currentThetajGivenMj), 
+						this.stateVarIndices[this.thetaVarPosition]);
+		
+		LOGGER.debug("summed out TAU contains: " + 
+				Arrays.toString(this.currentTauSummedOutTheta.getVarSet()));
 		
 		/* null this.currentMjPGivenMjOjPAj to save memory */
 		this.currentMjPGivenMjOjPAj = null;

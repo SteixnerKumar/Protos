@@ -9,9 +9,11 @@ package thinclab.tests;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.OptionalDouble;
 import java.util.Random;
 
 import org.apache.commons.lang3.ArrayUtils;
@@ -21,6 +23,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import thinclab.belief.FullBeliefExpansion;
+import thinclab.belief.IBeliefOps;
 import thinclab.decisionprocesses.IPOMDP;
 import thinclab.legacy.DD;
 import thinclab.legacy.Global;
@@ -70,6 +73,88 @@ class TestIPOMDP {
 		ipomdp.step(ipomdp.getCurrentBelief(), "listen", new String[] {"growl-left", "silence"});
 		ipomdp.step(ipomdp.getCurrentBelief(), "listen", new String[] {"growl-left", "silence"});
 		ipomdp.step(ipomdp.getCurrentBelief(), "listen", new String[] {"growl-left", "silence"});
+		
+	}
+	
+	@Test
+	void testAvgBeliefUpdate() throws Exception {
+		
+		IPOMDPParser parser = 
+				new IPOMDPParser(
+						"/home/adityas/git/repository/Protos/domains/tiger.L1multiple_new_parser.txt");
+		parser.parseDomain();
+		
+		LOGGER.info("Calling empty constructor");
+		IPOMDP ipomdp = new IPOMDP(parser, 3, 10);
+		
+		LOGGER.debug(ipomdp.multiFrameMJ.MJs.get(0).getDotString());
+		LOGGER.debug(ipomdp.multiFrameMJ.MJs.get(1).getDotString());
+		
+		ipomdp.step(ipomdp.getCurrentBelief(), "listen", new String[] {"growl-left", "silence"});
+		ipomdp.step(ipomdp.getCurrentBelief(), "listen", new String[] {"growl-left", "silence"});
+		ipomdp.step(ipomdp.getCurrentBelief(), "listen", new String[] {"growl-left", "silence"});
+		ipomdp.step(ipomdp.getCurrentBelief(), "listen", new String[] {"growl-left", "silence"});
+		
+		
+		List<Long> otherTimes = new ArrayList<Long>();
+		
+		for (int i = 0; i < 1000; i++) {
+			
+//			Global.clearHashtables();
+			
+			long then = System.nanoTime();
+			DD nextBelief = 
+					((IBeliefOps) ipomdp.bOPs).cachedbeliefUpdate(
+							ipomdp.getCurrentBelief(), 
+							"listen", 
+							new String[] {"growl-left", "silence"});
+			
+			long now = System.nanoTime();
+			
+			otherTimes.add((now - then) / 1000);
+		}
+		
+		List<Long> times = new ArrayList<Long>();
+		
+		for (int i = 0; i < 1000; i++) {
+			
+//			Global.clearHashtables();
+			
+			long then = System.nanoTime();
+			DD nextBelief = 
+					ipomdp.beliefUpdate(
+							ipomdp.getCurrentBelief(), 
+							"listen", 
+							new String[] {"growl-left", "silence"});
+			
+			long now = System.nanoTime();
+			
+			times.add((now - then) / 1000);
+		}
+		
+		OptionalDouble avg = times.stream().mapToDouble(a -> a).average();
+		OptionalDouble otherAvg = otherTimes.stream().mapToDouble(a -> a).average();
+		
+		DD nextBelief = 
+				((IBeliefOps) ipomdp.bOPs).cachedbeliefUpdate(
+						ipomdp.getCurrentBelief(), 
+						"listen", 
+						new String[] {"growl-left", "silence"});
+		
+		DD verifiedNextBelief = 
+				ipomdp.beliefUpdate(
+						ipomdp.getCurrentBelief(), 
+						"listen", 
+						new String[] {"growl-left", "silence"});
+		
+		LOGGER.debug("Average beliefUpdate is " + avg + " usecs");
+		LOGGER.debug("Average precomputedBeliefUpdate is " + otherAvg + " usecs");
+		
+		LOGGER.debug("Starting from: " + ipomdp.toMapWithTheta(ipomdp.getCurrentBelief()));
+		LOGGER.debug("Verified Update is " + ipomdp.toMapWithTheta(verifiedNextBelief));
+		LOGGER.debug("New belief Update is " + ipomdp.toMapWithTheta(nextBelief));
+		
+//		LOGGER.debug("Summed out TAU is " + ipomdp.currentTauSummedOut.toDDTree());
 		
 	}
 
