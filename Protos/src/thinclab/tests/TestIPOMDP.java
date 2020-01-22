@@ -842,10 +842,11 @@ class TestIPOMDP {
 		LOGGER.info("Testing IPOMDP NZ prime computation time");
 		
 		IPOMDPParser parser = 
-				new IPOMDPParser("/home/adityas/git/repository/Protos/domains/tiger.L1multiple_new_parser.txt");
+				new IPOMDPParser(
+						"/home/adityas/UGA/THINCLab/DomainFiles/final_domains/cybersec.5S.2O.L1.2F.domain");
 		parser.parseDomain();
 		
-		IPOMDP tigerL1IPOMDP = new IPOMDP(parser, 4, 20);
+		IPOMDP tigerL1IPOMDP = new IPOMDP(parser, 3, 20);
 		
 		for (PolicyNode belief: tigerL1IPOMDP.multiFrameMJ.MJs.get(0).idToNodeMap.values()) {
 			LOGGER.debug(belief.sBelief);
