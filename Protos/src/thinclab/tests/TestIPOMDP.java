@@ -27,6 +27,7 @@ import thinclab.legacy.Global;
 import thinclab.legacy.OP;
 import thinclab.parsers.IPOMDPParser;
 import thinclab.representations.StructuredTree;
+import thinclab.representations.policyrepresentations.PolicyNode;
 import thinclab.simulations.StochasticSimulation;
 import thinclab.solvers.OnlineInteractiveSymbolicPerseus;
 import thinclab.utils.CustomConfigurationFactory;
@@ -833,6 +834,23 @@ class TestIPOMDP {
 		LOGGER.info("\r\n" + ss.getDotString());
 		
 		ss.logResults();
+	}
+	
+	@Test
+	void testFactoredMj() {
+		
+		LOGGER.info("Testing IPOMDP NZ prime computation time");
+		
+		IPOMDPParser parser = 
+				new IPOMDPParser("/home/adityas/git/repository/Protos/domains/tiger.L1multiple_new_parser.txt");
+		parser.parseDomain();
+		
+		IPOMDP tigerL1IPOMDP = new IPOMDP(parser, 4, 20);
+		
+		for (PolicyNode belief: tigerL1IPOMDP.multiFrameMJ.MJs.get(0).idToNodeMap.values()) {
+			LOGGER.debug(belief.sBelief);
+		}
+		
 	}
 	
 	@Test
