@@ -23,8 +23,8 @@ public class FactoredMJ {
 	 * Factored Mj into independent parts of Mj beliefs
 	 */
 	
-	public HashSet<HashMap<String, Float>> individualBeliefs = 
-			new HashSet<HashMap<String, Float>>();
+	public HashMap<String, HashSet<HashMap<String, Float>>> individualBeliefs = 
+			new HashMap<String, HashSet<HashMap<String, Float>>>();
 	
 	public void makeFactoredMj(
 			HashMap<Integer, PolicyNode> idToNodeMap, DecisionProcess DPRef) {
@@ -34,7 +34,14 @@ public class FactoredMJ {
 		 */
 		
 		for (PolicyNode node: idToNodeMap.values()) {
-			this.individualBeliefs.add(DPRef.toMap(node.belief).get("ATTACKER_PRIVS"));
+			for (String stateName: DPRef.getStateVarNames()) {
+				
+				if (!this.individualBeliefs.containsKey(stateName))
+					this.individualBeliefs.put(stateName, new HashSet<HashMap<String, Float>>());
+				
+				this.individualBeliefs.get(stateName).add( 
+						DPRef.toMap(node.belief).get(stateName));
+			}
 		}
 	}
 

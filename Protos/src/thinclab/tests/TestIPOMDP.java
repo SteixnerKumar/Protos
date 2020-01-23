@@ -842,9 +842,12 @@ class TestIPOMDP {
 		
 		LOGGER.info("Testing IPOMDP NZ prime computation time");
 		
+//		IPOMDPParser parser = 
+//				new IPOMDPParser(
+//						"/home/adityas/UGA/THINCLab/DomainFiles/final_domains/cybersec.5S.2O.L1.2F.domain");
 		IPOMDPParser parser = 
 				new IPOMDPParser(
-						"/home/adityas/UGA/THINCLab/DomainFiles/final_domains/cybersec.5S.2O.L1.2F.domain");
+						"/home/adityas/git/repository/Protos/domains/tiger.L1multiple_new_parser.txt");
 		parser.parseDomain();
 		
 		IPOMDP tigerL1IPOMDP = new IPOMDP(parser, 3, 20);
@@ -860,8 +863,11 @@ class TestIPOMDP {
 		
 		
 		LOGGER.debug(tigerL1IPOMDP.multiFrameMJ.MJs.get(0).idToNodeMap.size());
-		LOGGER.debug(FMj.individualBeliefs);
-		LOGGER.debug(FMj.individualBeliefs.size());
+		
+		for (String name: FMj.individualBeliefs.keySet()) {
+			LOGGER.debug(name);
+			LOGGER.debug(FMj.individualBeliefs.get(name).size());
+		}
 		
 	}
 	
