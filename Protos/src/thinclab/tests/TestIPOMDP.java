@@ -27,6 +27,7 @@ import thinclab.legacy.Global;
 import thinclab.legacy.OP;
 import thinclab.parsers.IPOMDPParser;
 import thinclab.representations.StructuredTree;
+import thinclab.representations.modelrepresentations.FactoredMJ;
 import thinclab.representations.policyrepresentations.PolicyNode;
 import thinclab.simulations.StochasticSimulation;
 import thinclab.solvers.OnlineInteractiveSymbolicPerseus;
@@ -851,6 +852,16 @@ class TestIPOMDP {
 		for (PolicyNode belief: tigerL1IPOMDP.multiFrameMJ.MJs.get(0).idToNodeMap.values()) {
 			LOGGER.debug(belief.sBelief);
 		}
+		
+		FactoredMJ FMj = new FactoredMJ();
+		FMj.makeFactoredMj(
+				tigerL1IPOMDP.multiFrameMJ.MJs.get(0).idToNodeMap, 
+				tigerL1IPOMDP.multiFrameMJ.MJs.get(0).f);
+		
+		
+		LOGGER.debug(tigerL1IPOMDP.multiFrameMJ.MJs.get(0).idToNodeMap.size());
+		LOGGER.debug(FMj.individualBeliefs);
+		LOGGER.debug(FMj.individualBeliefs.size());
 		
 	}
 	
